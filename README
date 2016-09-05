@@ -1,3 +1,14 @@
+# add some new features with make_squishy
+## ignore commented require
+## ignore c lib(.so) file
+## default modules like string, table will not report error
+## add line number when can not find lua modules
+## add --env=env.lua options, use for additional environment setting(path and cpath)
+## add require route when can not find lua modules
+```
+Couldn't resolve module 'pl' to a file (required in lib/async/handle.lua line:7)            
+require route : hw.lua:3->lib/waffle/init.lua:31->lib/waffle/app.lua:1->lib/async/init.lua:3->lib/async/tcp.lua:5->/Users/liyi/Projects/sakura-lua/lib/async/handle.lua  
+```
 
 # Squish - One language to write them all, one squisher to squish them
 

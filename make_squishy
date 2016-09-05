@@ -15,7 +15,8 @@ end
 
 local short_opts = { v = "verbose", vv = "very_verbose", o = "output", q = "quiet", qq = "very_quiet", f = "force" }
 local files, opts = {}, {};
-local scanned_files, modules = {}, {};
+local scanned_files = {};
+local modules = { table = true, string = true, io = true, math = true, debug = true, coroutine = true, os = true} -- add lua default modules
 
 for _, opt in ipairs(arg) do
 	if opt:match("^%-") then
@@ -52,6 +53,11 @@ if not opts.force then
 	end
 end
 
+if opts.env then
+	-- print(opts.env)
+	require(opts.env)
+end
+
 local squishy, err = io.open("squishy.new", "w+");
 if not squishy then
 	print_err("Couldn't open squishy file for writing: "..tostring(err));
@@ -75,28 +81,37 @@ local package_cpath = package.cpath:gsub("[^;]+", function (path)
 	end):gsub("/%./", "/");
 
 
-function scan_file(outfile, scanfile)
+function scan_file(outfile, scanfile, route)
+	local code_line = 1;
+	if not route then
+		route = scanfile
+	else 
+		route = route .. "->" .. scanfile
+	end
 	for line in io.lines(scanfile) do
-		for _, module in (" "..line):gmatch("[^%w_]require%s*%(?([\"'])(.-)%1") do
-			if not modules[module] then
+		for pos, _, module in (" "..line):gmatch("[^%w_]()require%s*%(?([\"'])(.-)%2") do
+			if not modules[module] and not line:sub(1, pos - 2):find("%-%-") then
 				local binary;
 				modules[module] = true;
 				local filename = resolve_module(module, package_path);
-				if false and not filename then
+				if not filename then
 					binary = true;
 					filename = resolve_module(module, package_cpath);
 				end
 				if not filename then
-					print_info("Couldn't resolve module '"..module.."' to a file (required in "..scanfile..")");
+					print_info("Couldn't resolve module '"..module.."' to a file (required in "..scanfile.." line:"..code_line ..")");
+					print_info("require route : " .. route.. ":" .. code_line)
 				elseif opts.recursion ~= false and not scanned_files[filename] then
 					scanned_files[filename] = true;
-					table.insert(files, filename);
+					-- table.insert(files, filename);
+					scan_file(squishy, filename, route .. ":" .. code_line);
 				end
-				if filename then
+				if filename and not binary then
 					outfile:write((binary and "Binary" or ""), string.format([[Module %q %q]], module, filename:gsub("^"..base_path:gsub("%p", "%%%1"), "")), "\n");
 				end
 			end
 		end
+		code_line = code_line + 1 
 	end
 end
 
